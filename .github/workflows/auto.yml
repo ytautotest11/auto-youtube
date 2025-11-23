@@ -1,4 +1,4 @@
-name: Auto YouTube Video
+name: Auto YouTube Video (Gemini)
 
 on:
   workflow_dispatch:
@@ -12,22 +12,21 @@ jobs:
 
       - name: Install system dependencies (ffmpeg)
         run: |
-          sudo apt update
-          sudo apt install -y ffmpeg
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Python packages
         run: |
           pip install --upgrade pip
-          pip install --no-cache-dir -r requirements.txt
+          pip install -r requirements.txt
 
       - name: Run bot
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
-          CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
         run: python main.py
