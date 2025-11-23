@@ -1,7 +1,10 @@
-moviepy
-openai
+moviepy==1.0.3
 pydub
+gTTS
 google-api-python-client
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
+requests
+Pillow
+openai==0.27.8
