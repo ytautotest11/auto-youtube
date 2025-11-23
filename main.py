@@ -1,110 +1,96 @@
 import os
-import json
-import google.generativeai as genai
+import requests
 from gtts import gTTS
-from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, AudioFileClip
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from moviepy.editor import *
+import random
+import string
 
-# Load secrets
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-YOUTUBE_TOKEN_JSON = os.getenv("YOUTUBE_TOKEN_JSON")
+# =========================
+# FREE SYSTEM — NO API KEYS
+# =========================
 
-# Configure Gemini
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("models/gemini-1.5-flash-8b")  # Free text model
+# Free HuggingFace text model
+HF_TEXT_MODEL = "tiiuae/falcon-7b-instruct"
+
+# Free HuggingFace image model
+HF_IMAGE_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
 
 
+# =========================
+# Generate YouTube Script
+# =========================
 def generate_script():
-    print("Generating script using Gemini...")
     prompt = """
-    Write a short 40–60 second motivational YouTube video script in Hindi.
-    Must include:
-    - powerful opening hook  
-    - emotional lines  
-    - climax / message  
-    - call to action  
+    Write a 45-second YouTube short script in Hindi on an interesting fact.
+    Style: engaging, fast-paced, simple language.
     """
-    response = model.generate_content(prompt)
-    return response.text
-
-
-def generate_image(text):
-    print("Generating image using Gemini Vision-free API style prompt...")
-    image_name = "visual.png"
-
-    # Simple PIL-based poster design
-    img = Image.new("RGB", (1280, 720), color=(0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 40)
-
-    lines = []
-    words = text.split()
-    line = ""
-
-    for w in words:
-        test = (line + " " + w).strip()
-        if draw.textlength(test, font=font) < 1100:
-            line = test
-        else:
-            lines.append(line)
-            line = w
-    lines.append(line)
-
-    y = 200
-    for ln in lines[:6]:
-        draw.text((60, y), ln, font=font, fill=(255, 255, 255))
-        y += 60
-
-    img.save(image_name)
-    return image_name
-
-
-def generate_voice(script):
-    print("Generating voice using gTTS...")
-    voice_path = "voice.mp3"
-    tts = gTTS(text=script, lang="hi")
-    tts.save(voice_path)
-    return voice_path
-
-
-def make_video(image_path, audio_path):
-    print("Creating video using moviepy...")
-    audio = AudioFileClip(audio_path)
-    clip = ImageClip(image_path).set_duration(audio.duration)
-    clip = clip.set_audio(audio)
-    clip.write_videofile("output.mp4", fps=24)
-    return "output.mp4"
-
-
-def upload_to_youtube(video_path, title, desc):
-    print("Uploading to YouTube...")
-
-    creds = Credentials.from_authorized_user_info(json.loads(YOUTUBE_TOKEN_JSON))
-    youtube = build("youtube", "v3", credentials=creds)
-
-    request = youtube.videos().insert(
-        part="snippet,status",
-        body={
-            "snippet": {"title": title, "description": desc},
-            "status": {"privacyStatus": "public"}
-        },
-        media_body=MediaFileUpload(video_path, mimetype="video/mp4")
+    
+    response = requests.post(
+        "https://api-inference.huggingface.co/models/" + HF_TEXT_MODEL,
+        headers={"Authorization": "Bearer " + os.getenv("HF_TOKEN", "")},
+        json={"inputs": prompt}
     )
 
-    response = request.execute()
-    print("Uploaded!", response)
+    text = response.json()[0]["generated_text"]
+    return text
 
 
+# =========================
+# Generate AI Image
+# =========================
+def generate_image(prompt, filename="image.png"):
+    response = requests.post(
+        "https://api-inference.huggingface.co/models/" + HF_IMAGE_MODEL,
+        headers={"Authorization": "Bearer " + os.getenv("HF_TOKEN", "")},
+        json={"inputs": prompt},
+    )
+
+    with open(filename, "wb") as f:
+        f.write(response.content)
+
+    return filename
+
+
+# =========================
+# Convert Script → Voice
+# =========================
+def generate_voice(script, filename="voice.mp3"):
+    tts = gTTS(script, lang="hi")
+    tts.save(filename)
+    return filename
+
+
+# =========================
+# Create Video
+# =========================
+def create_video(img_path, audio_path, output="final.mp4"):
+
+    image_clip = ImageClip(img_path).set_duration(AudioFileClip(audio_path).duration)
+    audio_clip = AudioFileClip(audio_path)
+
+    final = image_clip.set_audio(audio_clip)
+    final.write_videofile(output, fps=24)
+
+    return output
+
+
+# =========================
+# MAIN PIPELINE
+# =========================
 def run():
+    print("✔ Generating Hindi script...")
     script = generate_script()
-    image = generate_image(script)
-    voice = generate_voice(script)
-    video = make_video(image, voice)
-    upload_to_youtube(video, "AI Gemini Auto Video", script)
+
+    print("✔ Creating image...")
+    img = generate_image("beautiful cinematic scene, ultra detailed", "img.png")
+
+    print("✔ Generating voice...")
+    audio = generate_voice(script, "voice.mp3")
+
+    print("✔ Rendering final video...")
+    video = create_video(img, audio, "final_output.mp4")
+
+    print("🎉 DONE — Video Ready:", video)
 
 
 if __name__ == "__main__":
