@@ -1,6 +1,8 @@
-name: Auto YouTube Upload
+name: Auto YouTube Video
 
 on:
+  schedule:
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 jobs:
@@ -10,20 +12,20 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install system dependencies (ffmpeg)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-
-      - name: Install system dependencies (ffmpeg)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
 
       - name: Install Python packages
         run: pip install -r requirements.txt
 
       - name: Run bot
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
+          CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: python main.py
