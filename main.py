@@ -2,82 +2,86 @@ import os
 import json
 import requests
 from moviepy.editor import *
+from moviepy.video.tools.drawing import color_gradient
+from PIL import Image, ImageDraw, ImageFont
 from gtts import gTTS
 
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
 def gemini(prompt):
-    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key=" + GEMINI_KEY
-    
-    body = {
-        "prompt": {
-            "text": prompt
-        }
-    }
-    
-    r = requests.post(url, json=body, timeout=40)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key={GEMINI_KEY}"
+    body = { "prompt": { "text": prompt } }
+    r = requests.post(url, json=body)
     data = r.json()
-
     try:
         return data["candidates"][0]["output"]
     except:
-        return "Gemini failed. Default script."
+        return "Error script"
 
 def generate_script():
     prompt = """
-    Write a 50-second YouTube Hindi short script.
-    Topic: One amazing fact that shocks people.
-    Make it engaging, simple, and natural.
+    Create a viral 45 sec Hindi YouTube short fact script.
+    Make it engaging and simple.
     """
     return gemini(prompt)
 
-def generate_image_prompt(script):
-    prompt = f"""
-    Based on this script:
-    {script}
-    write a single-sentence image description for an AI photo.
-    """
-    return gemini(prompt)
 
-def text_to_speech(text, out_file):
-    tts = gTTS(text, lang="hi")
-    tts.save(out_file)
+# ---------------- TEXT TO IMAGE (PIL instead of ImageMagick) ---------------- #
 
-def create_video(script, image_prompt):
+def text_to_image(text, out_path):
+    img = Image.new("RGB", (1080,1920), color=(0,0,0))
+    draw = ImageDraw.Draw(img)
+
+    font = ImageFont.truetype("DejaVuSans.ttf", 60)
+
+    lines = []
+    words = text.split(" ")
+    line = ""
+    for w in words:
+        if draw.textlength(line + " " + w, font=font) < 900:
+            line += " " + w
+        else:
+            lines.append(line)
+            line = w
+    lines.append(line)
+
+    y = 200
+    for line in lines:
+        draw.text((100,y), line, font=font, fill=(255,255,255))
+        y += 100
+
+    img.save(out_path)
+
+
+# ---------------- VIDEO CREATION ---------------- #
+
+def create_video(script):
     os.makedirs("output", exist_ok=True)
 
-    # Generate voice
-    audio_path = "output/voice.mp3"
-    text_to_speech(script, audio_path)
+    voice_path = "output/voice.mp3"
+    gTTS(script, lang="hi").save(voice_path)
 
-    # Dummy background (black)
-    clip = ColorClip(size=(1080,1920), color=(0,0,0), duration=50)
+    # Generate text image
+    img_path = "output/text.png"
+    text_to_image(script, img_path)
 
-    # Add text overlay
-    txt = TextClip(script, fontsize=50, color="white", size=(1000, None), method="caption")
-    txt = txt.set_position("center").set_duration(50)
+    # Create video background
+    img_clip = ImageClip(img_path).set_duration(45)
+    audio = AudioFileClip(voice_path)
 
-    # Add audio
-    audio = AudioFileClip(audio_path)
-    final = clip.set_audio(audio)
-
-    # Add text on top
-    final = CompositeVideoClip([final, txt])
+    final = img_clip.set_audio(audio)
 
     out = "output/final.mp4"
     final.write_videofile(out, fps=24, codec="libx264", audio_codec="aac")
-
     return out
+
 
 def run():
     print("Generating script...")
     script = generate_script()
 
-    print("Generating image prompt...")
-    img_prompt = generate_image_prompt(script)
-
     print("Creating video...")
-    video = create_video(script, img_prompt)
+    video = create_video(script)
 
     print("DONE:", video)
 
