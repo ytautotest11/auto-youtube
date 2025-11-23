@@ -1,18 +1,18 @@
-name: Auto YouTube Bot
+name: Auto YouTube Upload
 
 on:
   schedule:
-    # Long videos
+    # === LONG VIDEOS ===
     - cron: "0 4 * * *"
     - cron: "30 4 * * *"
 
-    # Info Reel Shorts
+    # === INFO REEL SHORTS ===
     - cron: "30 3 * * *"
     - cron: "30 6 * * *"
     - cron: "30 9 * * *"
     - cron: "30 12 * * *"
 
-    # Mind Pop India Shorts
+    # === MIND POP INDIA SHORTS ===
     - cron: "0 4 * * *"
     - cron: "0 7 * * *"
     - cron: "0 10 * * *"
@@ -25,23 +25,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      # -----------------------------
+      # 1. Checkout repository
+      # -----------------------------
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up python
+      # -----------------------------
+      # 2. Install Python
+      # -----------------------------
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Install ffmpeg
+      # -----------------------------
+      # 3. Install FFmpeg (required for MoviePy)
+      # -----------------------------
+      - name: Install FFmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Install requirements
+      # -----------------------------
+      # 4. Install ImageMagick (needed for MoviePy/text)
+      # -----------------------------
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
+      # -----------------------------
+      # 5. FIX ImageMagick security policy
+      # (DEFAULT IMAGE POLICIES BLOCK TEXT RENDERING)
+      # -----------------------------
+      - name: Fix ImageMagick Security Policy
+        run: |
+          FILE="/etc/ImageMagick-6/policy.xml"
+          if [ -f "$FILE" ]; then
+            sudo sed -i 's/rights="none"/rights="read|write"/g' $FILE
+            sudo sed -i 's/rights="read"/rights="read|write"/g' $FILE
+          fi
+
+      # -----------------------------
+      # 6. Install Python dependencies
+      # -----------------------------
+      - name: Install Python Dependencies
         run: pip install -r requirements.txt
 
-      - name: Run bot
+      # -----------------------------
+      # 7. Run Bot
+      # -----------------------------
+      - name: Run YouTube Automation Bot
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
