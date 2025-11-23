@@ -1,6 +1,6 @@
 google-generativeai
 pillow
-moviepy
+moviepy==1.0.3
 gtts
 requests
 google-api-python-client
