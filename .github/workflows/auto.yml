@@ -1,24 +1,6 @@
 name: Auto YouTube Upload
 
 on:
-  schedule:
-
-    # === LONG VIDEOS ===
-    - cron: "0 4 * * *"
-    - cron: "30 4 * * *"
-
-    # === INFO REEL SHORTS ===
-    - cron: "30 3 * * *"
-    - cron: "30 6 * * *"
-    - cron: "30 9 * * *"
-    - cron: "30 12 * * *"
-
-    # === MIND POP INDIA SHORTS ===
-    - cron: "0 4 * * *"
-    - cron: "0 7 * * *"
-    - cron: "0 10 * * *"
-    - cron: "0 13 * * *"
-
   workflow_dispatch:
 
 jobs:
@@ -33,15 +15,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Clear pip cache
-        run: pip cache purge
+      - name: Install system dependencies (ffmpeg)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
-      - name: Install dependencies
+      - name: Install Python packages
         run: pip install -r requirements.txt
 
       - name: Run bot
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
-          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: python main.py
