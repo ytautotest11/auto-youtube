@@ -14,7 +14,7 @@ YOUTUBE_TOKEN_JSON = os.getenv("YOUTUBE_TOKEN_JSON")
 
 # Configure Gemini
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-pro")  # Free text model
+model = genai.GenerativeModel("gemini-1.5-flash")  # Free text model
 
 
 def generate_script():
