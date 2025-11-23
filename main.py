@@ -1,97 +1,85 @@
 import os
+import json
 import requests
-from gtts import gTTS
 from moviepy.editor import *
-import random
-import string
+from gtts import gTTS
 
-# =========================
-# FREE SYSTEM — NO API KEYS
-# =========================
+GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 
-# Free HuggingFace text model
-HF_TEXT_MODEL = "tiiuae/falcon-7b-instruct"
+def gemini(prompt):
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateText?key=" + GEMINI_KEY
+    
+    body = {
+        "prompt": {
+            "text": prompt
+        }
+    }
+    
+    r = requests.post(url, json=body, timeout=40)
+    data = r.json()
 
-# Free HuggingFace image model
-HF_IMAGE_MODEL = "stabilityai/stable-diffusion-xl-base-1.0"
+    try:
+        return data["candidates"][0]["output"]
+    except:
+        return "Gemini failed. Default script."
 
-
-# =========================
-# Generate YouTube Script
-# =========================
 def generate_script():
     prompt = """
-    Write a 45-second YouTube short script in Hindi on an interesting fact.
-    Style: engaging, fast-paced, simple language.
+    Write a 50-second YouTube Hindi short script.
+    Topic: One amazing fact that shocks people.
+    Make it engaging, simple, and natural.
     """
-    
-    response = requests.post(
-        "https://api-inference.huggingface.co/models/" + HF_TEXT_MODEL,
-        headers={"Authorization": "Bearer " + os.getenv("HF_TOKEN", "")},
-        json={"inputs": prompt}
-    )
+    return gemini(prompt)
 
-    text = response.json()[0]["generated_text"]
-    return text
+def generate_image_prompt(script):
+    prompt = f"""
+    Based on this script:
+    {script}
+    write a single-sentence image description for an AI photo.
+    """
+    return gemini(prompt)
 
+def text_to_speech(text, out_file):
+    tts = gTTS(text, lang="hi")
+    tts.save(out_file)
 
-# =========================
-# Generate AI Image
-# =========================
-def generate_image(prompt, filename="image.png"):
-    response = requests.post(
-        "https://api-inference.huggingface.co/models/" + HF_IMAGE_MODEL,
-        headers={"Authorization": "Bearer " + os.getenv("HF_TOKEN", "")},
-        json={"inputs": prompt},
-    )
+def create_video(script, image_prompt):
+    os.makedirs("output", exist_ok=True)
 
-    with open(filename, "wb") as f:
-        f.write(response.content)
+    # Generate voice
+    audio_path = "output/voice.mp3"
+    text_to_speech(script, audio_path)
 
-    return filename
+    # Dummy background (black)
+    clip = ColorClip(size=(1080,1920), color=(0,0,0), duration=50)
 
+    # Add text overlay
+    txt = TextClip(script, fontsize=50, color="white", size=(1000, None), method="caption")
+    txt = txt.set_position("center").set_duration(50)
 
-# =========================
-# Convert Script → Voice
-# =========================
-def generate_voice(script, filename="voice.mp3"):
-    tts = gTTS(script, lang="hi")
-    tts.save(filename)
-    return filename
+    # Add audio
+    audio = AudioFileClip(audio_path)
+    final = clip.set_audio(audio)
 
+    # Add text on top
+    final = CompositeVideoClip([final, txt])
 
-# =========================
-# Create Video
-# =========================
-def create_video(img_path, audio_path, output="final.mp4"):
+    out = "output/final.mp4"
+    final.write_videofile(out, fps=24, codec="libx264", audio_codec="aac")
 
-    image_clip = ImageClip(img_path).set_duration(AudioFileClip(audio_path).duration)
-    audio_clip = AudioFileClip(audio_path)
+    return out
 
-    final = image_clip.set_audio(audio_clip)
-    final.write_videofile(output, fps=24)
-
-    return output
-
-
-# =========================
-# MAIN PIPELINE
-# =========================
 def run():
-    print("✔ Generating Hindi script...")
+    print("Generating script...")
     script = generate_script()
 
-    print("✔ Creating image...")
-    img = generate_image("beautiful cinematic scene, ultra detailed", "img.png")
+    print("Generating image prompt...")
+    img_prompt = generate_image_prompt(script)
 
-    print("✔ Generating voice...")
-    audio = generate_voice(script, "voice.mp3")
+    print("Creating video...")
+    video = create_video(script, img_prompt)
 
-    print("✔ Rendering final video...")
-    video = create_video(img, audio, "final_output.mp4")
-
-    print("🎉 DONE — Video Ready:", video)
-
+    print("DONE:", video)
 
 if __name__ == "__main__":
     run()
