@@ -1,6 +1,23 @@
-name: Auto YouTube Video (Gemini)
+name: Auto YouTube Bot
 
 on:
+  schedule:
+    # Long videos
+    - cron: "0 4 * * *"
+    - cron: "30 4 * * *"
+
+    # Info Reel Shorts
+    - cron: "30 3 * * *"
+    - cron: "30 6 * * *"
+    - cron: "30 9 * * *"
+    - cron: "30 12 * * *"
+
+    # Mind Pop India Shorts
+    - cron: "0 4 * * *"
+    - cron: "0 7 * * *"
+    - cron: "0 10 * * *"
+    - cron: "0 13 * * *"
+
   workflow_dispatch:
 
 jobs:
@@ -8,25 +25,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Install system dependencies (ffmpeg)
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install ffmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Install Python packages
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
+      - name: Install requirements
+        run: pip install -r requirements.txt
 
       - name: Run bot
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLIENT_SECRET_JSON: ${{ secrets.CLIENT_SECRET_JSON }}
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: python main.py
