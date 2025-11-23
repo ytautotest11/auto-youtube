@@ -8,10 +8,10 @@ from pydub import AudioSegment
 from moviepy.editor import ImageClip, AudioFileClip
 
 # Load keys
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-YOUTUBE_TOKEN_JSON = os.getenv("YOUTUBE_TOKEN_JSON")
+from openai import OpenAI
+import os
 
-client = OpenAI(api_key=OPENAI_API_KEY)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # -------------------------------
 # 1) SCRIPT GENERATION
